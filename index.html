@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jeswin Thomas</title>
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- Pin Three.js + addons to a single version to prevent drift -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+
+  <!-- Full-viewport Three.js canvas lives here -->
+  <canvas id="bg-canvas"></canvas>
+
+  <!-- Top-left name title -->
+  <h1 class="site-title">Jeswin<br><span class="title-last">Thomas</span></h1>
+
+  <!-- Link buttons -- populated from LINKS array in main.js -->
+  <nav class="link-nav" aria-label="External links"></nav>
+
+  <a class="email-link" href="mailto:ptjeswin99@gmail.com">ptjeswin99@gmail.com</a>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>
