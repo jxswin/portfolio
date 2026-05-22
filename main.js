@@ -227,12 +227,14 @@ function addOutline( skinnedMesh ) {
 }
 
 // ── Avatar state ──────────────────────────────────────────────────────────────
-let mixer      = null;
-let avatarRoot = null;
-let avatarBaseY = 0;
-let idleAction  = null;
-let danceAction = null;
-let isDancing   = false;
+let mixer        = null;
+let avatarRoot   = null;
+let avatarBaseY  = 0;
+let idleAction   = null;
+let danceAction  = null;
+let isDancing    = false;
+let hipsBone     = null;
+const savedHipsPos = new THREE.Vector3();
 
 // ── FBX Loader ────────────────────────────────────────────────────────────────
 // ════════════════════════════════════════════════════════════════════════════
@@ -266,6 +268,13 @@ loader.load(
 
     // -- Save resting Y for the bob animation (includes the offset)
     avatarBaseY = fbx.position.y;
+
+    // -- Find the hips bone (root of the skeleton) so we can lock its position during dance
+    fbx.traverse( ( child ) => {
+      if ( !hipsBone && child.isBone && child.name.toLowerCase().includes( 'hip' ) ) {
+        hipsBone = child;
+      }
+    } );
 
     // -- Apply MeshToonMaterial; preserve any texture maps from the FBX
     fbx.traverse( ( child ) => {
@@ -362,6 +371,8 @@ function tryDance( clientX, clientY ) {
   if ( raycaster.intersectObject( avatarRoot, true ).length === 0 ) return;
 
   isDancing = true;
+  // Snapshot hips position from idle animation so we can hold it during dance
+  if ( hipsBone ) savedHipsPos.copy( hipsBone.position );
   danceAction.reset();
   idleAction.crossFadeTo( danceAction, 0.4, true );
   danceAction.play();
@@ -423,10 +434,15 @@ function animate() {
 
   if ( mixer ) mixer.update( delta );
 
-  // Vertical float bob only -- no rotation
   if ( avatarRoot ) {
-    avatarRoot.position.y =
-      avatarBaseY + Math.sin( elapsed * BOB_SPEED * Math.PI * 2 ) * BOB_AMPLITUDE;
+    if ( isDancing ) {
+      // Lock root and hips bone position so the avatar stays in one spot
+      avatarRoot.position.y = avatarBaseY;
+      if ( hipsBone ) hipsBone.position.copy( savedHipsPos );
+    } else {
+      avatarRoot.position.y =
+        avatarBaseY + Math.sin( elapsed * BOB_SPEED * Math.PI * 2 ) * BOB_AMPLITUDE;
+    }
   }
 
   renderer.render( scene, camera );
