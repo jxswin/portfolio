@@ -315,16 +315,15 @@ danceLoader.load(
     if ( !danceFbx.animations?.length ) return;
     const clip = danceFbx.animations[ 0 ];
 
-    // Mixamo "no skin" exports prefix bone names with the armature name, e.g.
-    // "Armature|mixamorigHips.quaternion". Strip everything up to and including
-    // the last "|" so the tracks resolve against the avatar's bone hierarchy.
+    // Strip armature prefix from bone track names so they resolve on the avatar.
     clip.tracks.forEach( ( t ) => {
       const pipe = t.name.lastIndexOf( '|' );
       if ( pipe !== -1 ) t.name = t.name.slice( pipe + 1 );
     } );
 
-    // Register the action on the avatar's mixer once it's ready.
-    // Poll until mixer is available (avatar load may not be done yet).
+    // Remove all position tracks → dance stays in-place, no displacement.
+    clip.tracks = clip.tracks.filter( ( t ) => !t.name.endsWith( '.position' ) );
+
     const register = () => {
       if ( !mixer ) { setTimeout( register, 100 ); return; }
       danceAction = mixer.clipAction( clip );
@@ -334,7 +333,11 @@ danceLoader.load(
       mixer.addEventListener( 'finished', ( e ) => {
         if ( e.action !== danceAction ) return;
         isDancing = false;
-        danceAction.crossFadeTo( idleAction, 0.4, true );
+        // Fully re-enable idle so it resumes its loop cleanly, no T-pose.
+        idleAction.enabled = true;
+        idleAction.setEffectiveTimeScale( 1 );
+        idleAction.setEffectiveWeight( 1 );
+        danceAction.crossFadeTo( idleAction, 0.4, false );
         idleAction.play();
       } );
     };
