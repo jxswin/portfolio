@@ -77,6 +77,7 @@ const TOON_STEPS = 3;
 // Larger = thicker outline. Applied per SkinnedMesh so it follows the animation.
 // ─────────────────────────────────────────────────────────────────────────────
 const OUTLINE_WIDTH = 0.007;
+const DRAG_SPEED    = 0.007; // radians per pixel of drag
 
 // ─────────────────────────────────────────────────────────────────────────────
 // EDIT: Camera — bottom-left composition
@@ -180,13 +181,11 @@ applyCamera();
 const ambient = new THREE.AmbientLight( 0xffffff, 0.75 );
 scene.add( ambient );
 
-// Strong key light from upper-left — sharp toon shadow boundary
-const keyLight = new THREE.DirectionalLight( 0xe8f0ff, 2.0 );
+const keyLight = new THREE.DirectionalLight( 0xffffff, 2.4 );
 keyLight.position.set( -2, 5, 3 );
 scene.add( keyLight );
 
-// Subtle rim from upper-right to lift the silhouette from the background
-const rimLight = new THREE.DirectionalLight( 0x88aaff, 0.5 );
+const rimLight = new THREE.DirectionalLight( 0xffffff, 0.4 );
 rimLight.position.set( 4, 3, -2 );
 scene.add( rimLight );
 
@@ -272,7 +271,7 @@ loader.load(
       child.material = mats.map( ( m ) =>
         new THREE.MeshToonMaterial({
           map:         m?.map   ?? null,
-          color:       m?.color ?? new THREE.Color( 0xf0f4f8 ),
+          color:       new THREE.Color( 0xffffff ),
           gradientMap,
         })
       );
@@ -312,6 +311,28 @@ function onResize() {
   applyCamera();
 }
 window.addEventListener( 'resize', onResize );
+
+// ── Swipe / drag to rotate ────────────────────────────────────────────────────
+let dragActive = false;
+let dragLastX  = 0;
+
+canvas.style.cursor = 'grab';
+
+canvas.addEventListener( 'pointerdown', ( e ) => {
+  dragActive = true;
+  dragLastX  = e.clientX;
+  canvas.style.cursor = 'grabbing';
+  canvas.setPointerCapture( e.pointerId );
+} );
+
+canvas.addEventListener( 'pointermove', ( e ) => {
+  if ( !dragActive || !avatarRoot ) return;
+  avatarRoot.rotation.y += ( e.clientX - dragLastX ) * DRAG_SPEED;
+  dragLastX = e.clientX;
+} );
+
+canvas.addEventListener( 'pointerup',     () => { dragActive = false; canvas.style.cursor = 'grab'; } );
+canvas.addEventListener( 'pointercancel', () => { dragActive = false; canvas.style.cursor = 'grab'; } );
 
 // ── Render loop ───────────────────────────────────────────────────────────────
 const clock = new THREE.Clock();

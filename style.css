@@ -38,25 +38,32 @@ html, body {
   width: 100%;
   height: 100%;
   display: block;
-  /* Subtle radial highlight in the lower-left where the model lives */
   background: radial-gradient(ellipse at 28% 88%, var(--cobalt-mid) 0%, var(--cobalt) 62%);
 }
 
-/* ── Title: top-left ── */
-.site-title {
+/* ── Right panel: title + nav stacked, vertically centred ── */
+.right-panel {
   position: fixed;
-  top: 44px;
   right: 48px;
-  text-align: right;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 40px;
+  z-index: 10;
+}
+
+/* ── Title ── */
+.site-title {
+  text-align: left;
   font-size: clamp(4rem, 8vw, 7.5rem);
   font-weight: 800;
   line-height: 0.92;
   letter-spacing: -0.03em;
   color: var(--white);
-  z-index: 10;
   pointer-events: none;
   user-select: none;
-  /* Very subtle shadow so text reads on any background */
   text-shadow: 0 2px 24px rgba(0, 0, 0, 0.25);
 }
 
@@ -67,17 +74,12 @@ html, body {
   margin-top: -0.1em;
 }
 
-/* ── Nav: right side, vertically stacked ── */
+/* ── Nav: stacked buttons ── */
 .link-nav {
-  position: fixed;
-  right: 48px;
-  top: 50%;
-  transform: translateY(-50%);
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 40px;
-  z-index: 10;
 }
 
 /* ── Link buttons ── */
@@ -148,12 +150,7 @@ html, body {
 
 /* ── Tablet ── */
 @media (min-width: 681px) and (max-width: 1024px) {
-  .site-title {
-    top: 36px;
-    right: 28px;
-  }
-
-  .link-nav {
+  .right-panel {
     right: 28px;
   }
 
@@ -165,18 +162,14 @@ html, body {
 
 /* ── Mobile ── */
 @media (max-width: 680px) {
-  .site-title {
-    font-size: 3.2rem;
-    top: 24px;
-    right: 16px;
-  }
-
-  .link-nav {
+  .right-panel {
     right: 16px;
     gap: 28px;
-    /* Keep vertically centred on the right, clear of the title */
-    top: 50%;
-    transform: translateY(-30%); /* shift up a little — model owns lower-left */
+    transform: translateY(-30%);
+  }
+
+  .site-title {
+    font-size: 3.2rem;
   }
 
   .link-btn {
