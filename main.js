@@ -51,7 +51,8 @@ const LINKS = [
 // ─────────────────────────────────────────────────────────────────────────────
 // EDIT: Model
 // ─────────────────────────────────────────────────────────────────────────────
-const MODEL_PATH = 'assets/avatar.fbx';
+const MODEL_PATH  = 'assets/avatar.fbx';
+const DANCE_PATH  = 'assets/House Dancing.fbx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // EDIT: Vertical position of the model in world space.
@@ -229,6 +230,9 @@ function addOutline( skinnedMesh ) {
 let mixer      = null;
 let avatarRoot = null;
 let avatarBaseY = 0;
+let idleAction  = null;
+let danceAction = null;
+let isDancing   = false;
 
 // ── FBX Loader ────────────────────────────────────────────────────────────────
 // ════════════════════════════════════════════════════════════════════════════
@@ -290,8 +294,9 @@ loader.load(
 
     // -- Wire up Mixamo animation
     if ( fbx.animations?.length > 0 ) {
-      mixer = new THREE.AnimationMixer( fbx );
-      mixer.clipAction( fbx.animations[ 0 ] ).play();
+      mixer      = new THREE.AnimationMixer( fbx );
+      idleAction = mixer.clipAction( fbx.animations[ 0 ] );
+      idleAction.play();
     }
   },
   ( xhr ) => {
@@ -301,6 +306,63 @@ loader.load(
   },
   ( err ) => console.error( 'FBX load error:', err )
 );
+
+// ── Dance FBX (animation only, no skin) ──────────────────────────────────────
+const danceLoader = new FBXLoader();
+danceLoader.load(
+  DANCE_PATH,
+  ( danceFbx ) => {
+    if ( !danceFbx.animations?.length ) return;
+    const clip = danceFbx.animations[ 0 ];
+
+    // Mixamo "no skin" exports prefix bone names with the armature name, e.g.
+    // "Armature|mixamorigHips.quaternion". Strip everything up to and including
+    // the last "|" so the tracks resolve against the avatar's bone hierarchy.
+    clip.tracks.forEach( ( t ) => {
+      const pipe = t.name.lastIndexOf( '|' );
+      if ( pipe !== -1 ) t.name = t.name.slice( pipe + 1 );
+    } );
+
+    // Register the action on the avatar's mixer once it's ready.
+    // Poll until mixer is available (avatar load may not be done yet).
+    const register = () => {
+      if ( !mixer ) { setTimeout( register, 100 ); return; }
+      danceAction = mixer.clipAction( clip );
+      danceAction.setLoop( THREE.LoopOnce, 1 );
+      danceAction.clampWhenFinished = true;
+
+      mixer.addEventListener( 'finished', ( e ) => {
+        if ( e.action !== danceAction ) return;
+        isDancing = false;
+        danceAction.crossFadeTo( idleAction, 0.4, true );
+        idleAction.play();
+      } );
+    };
+    register();
+  },
+  null,
+  ( err ) => console.error( 'Dance FBX error:', err )
+);
+
+// ── Click / tap to trigger dance ──────────────────────────────────────────────
+const raycaster = new THREE.Raycaster();
+const _ptr      = new THREE.Vector2();
+
+function tryDance( clientX, clientY ) {
+  if ( !avatarRoot || !danceAction || !idleAction || isDancing ) return;
+
+  const rect = canvas.getBoundingClientRect();
+  _ptr.x =  ( ( clientX - rect.left ) / rect.width  ) * 2 - 1;
+  _ptr.y = -( ( clientY - rect.top  ) / rect.height ) * 2 + 1;
+  raycaster.setFromCamera( _ptr, camera );
+
+  if ( raycaster.intersectObject( avatarRoot, true ).length === 0 ) return;
+
+  isDancing = true;
+  danceAction.reset();
+  idleAction.crossFadeTo( danceAction, 0.4, true );
+  danceAction.play();
+}
 
 // ── Resize ────────────────────────────────────────────────────────────────────
 function onResize() {
@@ -312,15 +374,19 @@ function onResize() {
 }
 window.addEventListener( 'resize', onResize );
 
-// ── Swipe / drag to rotate ────────────────────────────────────────────────────
-let dragActive = false;
-let dragLastX  = 0;
+// ── Swipe / drag to rotate  +  tap to dance ───────────────────────────────────
+let dragActive  = false;
+let dragLastX   = 0;
+let dragStartX  = 0;
+let dragStartY  = 0;
+const TAP_THRESHOLD = 6; // px — moves less than this count as a tap
 
 canvas.style.cursor = 'grab';
 
 canvas.addEventListener( 'pointerdown', ( e ) => {
   dragActive = true;
-  dragLastX  = e.clientX;
+  dragLastX  = dragStartX = e.clientX;
+  dragStartY = e.clientY;
   canvas.style.cursor = 'grabbing';
   canvas.setPointerCapture( e.pointerId );
 } );
@@ -331,7 +397,17 @@ canvas.addEventListener( 'pointermove', ( e ) => {
   dragLastX = e.clientX;
 } );
 
-canvas.addEventListener( 'pointerup',     () => { dragActive = false; canvas.style.cursor = 'grab'; } );
+canvas.addEventListener( 'pointerup', ( e ) => {
+  if ( !dragActive ) return;
+  dragActive = false;
+  canvas.style.cursor = 'grab';
+  const dx = e.clientX - dragStartX;
+  const dy = e.clientY - dragStartY;
+  if ( Math.hypot( dx, dy ) < TAP_THRESHOLD ) {
+    tryDance( e.clientX, e.clientY );
+  }
+} );
+
 canvas.addEventListener( 'pointercancel', () => { dragActive = false; canvas.style.cursor = 'grab'; } );
 
 // ── Render loop ───────────────────────────────────────────────────────────────
